@@ -10,9 +10,19 @@ import '../../../core/theme/app_theme.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/logo_widget.dart';
 import '../../widgets/offline_banner.dart';
+import '../../widgets/profile_avatar.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    this.selectedChatId,
+    this.onChatSelected,
+    this.showProfileAvatar = true,
+  });
+
+  final String? selectedChatId;
+  final ValueChanged<String>? onChatSelected;
+  final bool showProfileAvatar;
 
   @override
   Widget build(BuildContext context) {
@@ -25,14 +35,7 @@ class HomeScreen extends StatelessWidget {
           Expanded(
             child: SafeArea(
               top: false,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: AppTheme.maxContentWidth,
-                  ),
-                  child: _buildBody(),
-                ),
-              ),
+              child: _buildBody(),
             ),
           ),
         ],
@@ -56,6 +59,7 @@ class HomeScreen extends StatelessWidget {
     final photoUrl = context.watch<AuthProvider>().user?.photoUrl;
 
     return AppBar(
+      toolbarHeight: 72, // Give more breathing room from the OS title bar
       titleSpacing: 0,
       title: Padding(
         padding: const EdgeInsets.only(left: 24),
@@ -70,15 +74,16 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       actions: [
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.only(right: 24),
-            child: GestureDetector(
-              onTap: () => context.push('/profile-settings'),
-              child: _ProfileAvatar(photoUrl: photoUrl),
+        if (showProfileAvatar)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 24),
+              child: GestureDetector(
+                onTap: () => context.push('/profile-settings'),
+                child: ProfileAvatar(photoUrl: photoUrl),
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -160,70 +165,6 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar({required this.photoUrl});
-
-  final String? photoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    
-    return FutureBuilder<File?>(
-      future: authProvider.authRepository.getProfileImageFile(),
-      builder: (context, snapshot) {
-        final File? file = snapshot.data;
-        final bool hasLocalFile = file != null && file.existsSync();
-
-        return Container(
-          width: 40,
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(40 * 0.28),
-            border: Border.all(color: AppColors.tealDim),
-          ),
-          clipBehavior: Clip.hardEdge,
-          child: _buildImageContent(hasLocalFile, file),
-        );
-      },
-    );
-  }
-
-  Widget _buildImageContent(bool hasLocalFile, File? file) {
-    if (hasLocalFile) {
-      return Image.file(
-        file!,
-        fit: BoxFit.cover,
-        height: double.infinity,
-        width: double.infinity,
-        errorBuilder: (_, __, ___) => _buildFallback(),
-      );
-    }
-
-    if (photoUrl != null && photoUrl!.isNotEmpty) {
-      return Image.network(
-        photoUrl!,
-        fit: BoxFit.cover,
-        height: double.infinity,
-        width: double.infinity,
-        errorBuilder: (_, __, ___) => _buildFallback(),
-      );
-    }
-
-    return _buildFallback();
-  }
-
-  Widget _buildFallback() {
-    return const Icon(
-      Icons.person_rounded,
-      color: AppColors.tealMain,
-      size: 24,
     );
   }
 }

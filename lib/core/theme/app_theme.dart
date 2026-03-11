@@ -7,7 +7,9 @@ abstract final class AppTheme {
   static const double logoSmall = 32;
   static const double logoMedium = 80;
   static const double logoLarge = 120;
-  static const double maxContentWidth = 1200;
+  
+  /// Used to prevent auth/splash screens from stretching out on wide native windows
+  static const double maxAuthWidth = 600;
 
   static ThemeData get darkTheme {
     final base = ThemeData.dark(useMaterial3: true);

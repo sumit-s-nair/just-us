@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../presentation/screens/auth/login_screen.dart';
-import '../../presentation/screens/home/home_screen.dart';
+import '../../presentation/screens/home/main_screen.dart';
 import '../../presentation/screens/profile/profile_settings_screen.dart';
 import '../../presentation/screens/splash/splash_screen.dart';
 
@@ -22,7 +22,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/home',
       builder: (BuildContext context, GoRouterState state) =>
-          const HomeScreen(),
+          const MainScreen(),
     ),
     GoRoute(
       path: '/profile-settings',

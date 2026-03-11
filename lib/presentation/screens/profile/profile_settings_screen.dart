@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/offline_banner.dart';
 
@@ -40,33 +41,38 @@ class ProfileSettingsScreen extends StatelessWidget {
           const OfflineBanner(),
           Expanded(
             child: SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _buildHeroAvatar(context, user?.photoUrl),
-                    const SizedBox(height: 24),
-                    Text(
-                      user?.displayName ?? 'Unknown User',
-                      style: GoogleFonts.inter(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.5,
-                      ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: AppTheme.maxAuthWidth),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _buildHeroAvatar(context, user?.photoUrl),
+                        const SizedBox(height: 24),
+                        Text(
+                          user?.displayName ?? 'Unknown User',
+                          style: GoogleFonts.inter(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          user?.email ?? '',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 48),
+                        _buildSettingsSection(context),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      user?.email ?? '',
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
-                    _buildSettingsSection(context),
-                  ],
+                  ),
                 ),
               ),
             ),

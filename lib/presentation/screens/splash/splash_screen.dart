@@ -51,10 +51,13 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Center(
-        child: LogoWidget(
-          size: AppTheme.logoLarge,
-          showText: true,
-          layout: LogoLayout.vertical,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppTheme.maxAuthWidth),
+          child: const LogoWidget(
+            size: AppTheme.logoLarge,
+            showText: true,
+            layout: LogoLayout.vertical,
+          ),
         ),
       ),
     );
