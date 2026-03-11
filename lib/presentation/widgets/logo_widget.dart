@@ -19,8 +19,8 @@ class LogoWidget extends StatelessWidget {
   final LogoLayout layout;
   final Color textColor;
 
-  double get _borderRadius => size * 0.14;
-  double get _strokeWidth => (size * 0.035).clamp(2.0, 5.0);
+  double get _borderRadius => size * 0.2;
+  double get _strokeWidth => size * 0.12;
   double get _fontSize => size * 0.28;
   double get _gap => size * 0.12;
 

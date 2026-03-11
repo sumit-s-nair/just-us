@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../providers/auth_provider.dart';
 import '../../widgets/logo_widget.dart';
 
+/// Splash screen — shown only briefly while checking local token state.
+/// Routes instantly based on stored tokens (no network call).
+/// Server validation happens in the background from the home screen.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -16,12 +22,28 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1200), _navigateToHome);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _routeImmediately();
+    });
   }
 
-  void _navigateToHome() {
+  Future<void> _routeImmediately() async {
+    final apiClient = context.read<ApiClient>();
+    final auth = context.read<AuthProvider>();
+    final router = GoRouter.of(context);
+
+    final hasTokens = await apiClient.hasTokens;
+
     if (!mounted) return;
-    context.go('/home');
+
+    if (hasTokens) {
+      // Tokens exist locally — go straight to home.
+      // Validate session silently in the background.
+      router.go('/home');
+      auth.checkAuth();
+    } else {
+      router.go('/login');
+    }
   }
 
   @override

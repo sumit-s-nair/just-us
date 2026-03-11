@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../providers/auth_provider.dart';
 import '../../widgets/logo_widget.dart';
+import '../../widgets/offline_banner.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -12,16 +16,24 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: _buildAppBar(),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: AppTheme.maxContentWidth,
+      appBar: _buildAppBar(context),
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppTheme.maxContentWidth,
+                  ),
+                  child: _buildEmptyState(),
+                ),
+              ),
             ),
-            child: _buildEmptyState(),
           ),
-        ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
@@ -31,7 +43,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       titleSpacing: 0,
       title: Padding(
@@ -57,7 +69,58 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
-      actions: const [SizedBox(width: 16)],
+      actions: [
+        IconButton(
+          icon: const Icon(
+            Icons.logout_rounded,
+            color: AppColors.textSecondary,
+            size: 20,
+          ),
+          tooltip: 'Sign out',
+          onPressed: () => _signOut(context),
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  void _signOut(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    final router = GoRouter.of(context);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        title: Text(
+          'Sign out?',
+          style: GoogleFonts.inter(color: AppColors.textPrimary),
+        ),
+        content: Text(
+          'You will need to sign in again to access your chats.',
+          style: GoogleFonts.inter(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await auth.signOut();
+              router.go('/login');
+            },
+            child: Text(
+              'Sign out',
+              style: GoogleFonts.inter(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -1,6 +1,6 @@
 name: just_us
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.0+1
 
@@ -15,6 +15,14 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   google_fonts: ^6.2.1
   go_router: ^14.8.1
+  google_sign_in: ^6.2.2
+  http: ^1.3.0
+  flutter_secure_storage: ^9.2.4
+  provider: ^6.1.2
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  intl: ^0.20.2
+  flutter_dotenv: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -23,8 +31,10 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 flutter:
-
   uses-material-design: true
+
+  assets:
+    - .env
 
 flutter_launcher_icons:
   android: true
@@ -32,4 +42,3 @@ flutter_launcher_icons:
   image_path: assets/logo/icon.png
   adaptive_icon_background: "#161616"
   adaptive_icon_foreground: assets/logo/icon.png
-
