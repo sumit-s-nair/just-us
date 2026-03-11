@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>just_us Auth Handler</title>
+</head>
+<body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #121212; color: #fff;">
+  <div style="text-align: center;">
+    <h2>Authentication Successful!</h2>
+    <p>Returning you to just us...</p>
+
+    <script>
+      // 1. Parse the URL fragment to extract the id_token
+      var hash = window.location.hash.substring(1);
+      var params = new URLSearchParams(hash);
+      var idToken = params.get("id_token");
+
+      // 2. Transmit the id_token straight to the main Flutter window
+      if (window.opener) {
+        window.opener.postMessage({
+          type: "googleAuthCallback",
+          idToken: idToken
+        }, "http://localhost:4000"); // Only send to localhost:4000 for strict security
+        
+        // 3. Close this popup to cleanly restore user focus
+        window.close();
+      } else {
+        document.body.innerHTML = "<h2>Error</h2><p>Could not communicate with main window.</p>";
+      }
+    </script>
+  </div>
+</body>
+</html>

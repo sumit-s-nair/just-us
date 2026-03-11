@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'web_auth_stub.dart' if (dart.library.html) 'web_auth_impl.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/network/api_client.dart';
@@ -21,19 +25,31 @@ class AuthRepository {
 
   GoogleSignIn? _googleSignIn;
 
-  GoogleSignIn get _gsi => _googleSignIn ??= GoogleSignIn(
-        scopes: ['email', 'profile'],
-        clientId: AppConfig.googleServerClientId, // Required for Web plugin
-        serverClientId: AppConfig.googleServerClientId,
-      );
+  GoogleSignIn get _gsi {
+    if (_googleSignIn == null) {
+      if (kIsWeb) {
+        _googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+          clientId: AppConfig.googleServerClientId,
+        );
+      } else {
+        _googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+          serverClientId: AppConfig.googleServerClientId,
+        );
+      }
+    }
+    return _googleSignIn!;
+  }
 
   /// Sign in with Google, then authenticate with our backend.
   Future<UserModel> signInWithGoogle() async {
     final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+    final isWeb = kIsWeb;
 
     String idToken;
 
-    if (isDesktop) {
+    if (isDesktop || isWeb) {
       idToken = await _performDesktopGoogleAuth();
     } else {
       final googleUser = await _gsi.signIn();
@@ -87,8 +103,29 @@ class AuthRepository {
   /// Performs OAuth 2.0 Implicit Grant flow for Desktop by spinning up a local
   /// server and launching the default browser.
   Future<String> _performDesktopGoogleAuth() async {
+    if (kIsWeb) {
+      // 1. Construct the Google OAuth URL targeting an auth.html file
+      final redirectUri = 'http://localhost:4000/auth.html';
+      
+      final authUrl = Uri.parse(
+          'https://accounts.google.com/o/oauth2/v2/auth'
+          '?client_id=${AppConfig.googleServerClientId}'
+          '&redirect_uri=$redirectUri'
+          '&response_type=id_token'
+          '&scope=openid%20email%20profile'
+          '&nonce=${Random().nextInt(100000)}'
+          '&response_mode=fragment');
+
+      // 2. Launch popup window and listen to window.opener via stub file
+      return await performWebGoogleAuth(authUrl);
+    }
+
+    // --- Desktop Native Implementation ---
     // 1. Start a local HTTP server to listen for the redirect on a fixed port
-    // We use a fixed port (e.g. 3000) so you can whitelist exactly "http://localhost:3000" in Google Cloud Console.
+    // We use a fixed port (e.g. 4000) so you can whitelist exactly "http://localhost:4000" in Google Cloud Console.
+    
+    // We must guard dart:io classes from executing on web, even though the return statement above prevents reachability.
+    if (kIsWeb) throw Exception('Unreachable');
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 4000);
     final port = server.port;
 
