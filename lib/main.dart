@@ -14,7 +14,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
 
-  final apiClient = ApiClient(baseUrl: AppConfig.apiBaseUrl);
+  final connectivityService = ConnectivityService();
+  final apiClient = ApiClient(
+    baseUrl: AppConfig.apiBaseUrl,
+    connectivityService: connectivityService,
+  );
   final authRepository = AuthRepository(apiClient: apiClient);
 
   runApp(
@@ -23,8 +27,8 @@ Future<void> main() async {
         ChangeNotifierProvider(
           create: (_) => AuthProvider(authRepository: authRepository),
         ),
-        ChangeNotifierProvider(
-          create: (_) => ConnectivityService(),
+        ChangeNotifierProvider.value(
+          value: connectivityService,
         ),
         Provider.value(value: apiClient),
       ],

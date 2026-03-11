@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -28,121 +30,200 @@ class HomeScreen extends StatelessWidget {
                   constraints: const BoxConstraints(
                     maxWidth: AppTheme.maxContentWidth,
                   ),
-                  child: _buildEmptyState(),
+                  child: _buildBody(),
                 ),
               ),
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        tooltip: 'Start a new chat',
-        child: const Icon(Icons.chat_bubble_outline_rounded),
+      floatingActionButton: _buildFab(),
+    );
+  }
+
+  Widget _buildFab() {
+    return FloatingActionButton(
+      onPressed: () {},
+      tooltip: 'Start a new chat',
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(56 * 0.28), // Standard FAB is 56x56
       ),
+      child: const Icon(Icons.chat_bubble_outline_rounded),
     );
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
+    final photoUrl = context.watch<AuthProvider>().user?.photoUrl;
+
     return AppBar(
       titleSpacing: 0,
       title: Padding(
         padding: const EdgeInsets.only(left: 24),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const LogoWidget(
-              size: AppTheme.logoSmall,
-              showText: false,
+        child: Text(
+          'Chats',
+          style: GoogleFonts.inter(
+            fontSize: 28,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+            letterSpacing: -1.0,
+          ),
+        ),
+      ),
+      actions: [
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.only(right: 24),
+            child: GestureDetector(
+              onTap: () => context.push('/profile-settings'),
+              child: _ProfileAvatar(photoUrl: photoUrl),
             ),
-            const SizedBox(width: 10),
-            Text(
-              'just us',
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
-                letterSpacing: -0.2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        _buildSearchBar(),
+        const SizedBox(height: 16),
+        Expanded(
+          child: _buildEmptyState(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(48 * 0.28),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.search_rounded,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                style: GoogleFonts.inter(
+                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search chats & friends...',
+                  hintStyle: GoogleFonts.inter(
+                    color: AppColors.textSecondary,
+                    fontSize: 15,
+                  ),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
             ),
           ],
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(
-            Icons.logout_rounded,
-            color: AppColors.textSecondary,
-            size: 20,
-          ),
-          tooltip: 'Sign out',
-          onPressed: () => _signOut(context),
-        ),
-        const SizedBox(width: 8),
-      ],
     );
   }
 
-  void _signOut(BuildContext context) {
-    final auth = context.read<AuthProvider>();
-    final router = GoRouter.of(context);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.cardBackground,
-        title: Text(
-          'Sign out?',
-          style: GoogleFonts.inter(color: AppColors.textPrimary),
-        ),
-        content: Text(
-          'You will need to sign in again to access your chats.',
-          style: GoogleFonts.inter(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.inter(color: AppColors.textSecondary),
-            ),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const LogoWidget(
+            size: AppTheme.logoLarge,
+            showText: false,
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await auth.signOut();
-              router.go('/login');
-            },
-            child: Text(
-              'Sign out',
-              style: GoogleFonts.inter(color: Colors.redAccent),
+          const SizedBox(height: 16),
+          Text(
+            'just us, for now',
+            style: GoogleFonts.inter(
+              fontSize: 17,
+              fontWeight: FontWeight.w300,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.3,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildEmptyState() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const LogoWidget(
-          size: AppTheme.logoLarge,
-          showText: false,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'just us, for now',
-          style: GoogleFonts.inter(
-            fontSize: 17,
-            fontWeight: FontWeight.w300,
-            color: AppColors.textSecondary,
-            letterSpacing: 0.3,
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.photoUrl});
+
+  final String? photoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    
+    return FutureBuilder<File?>(
+      future: authProvider.authRepository.getProfileImageFile(),
+      builder: (context, snapshot) {
+        final File? file = snapshot.data;
+        final bool hasLocalFile = file != null && file.existsSync();
+
+        return Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(40 * 0.28),
+            border: Border.all(color: AppColors.tealDim),
           ),
-        ),
-      ],
+          clipBehavior: Clip.hardEdge,
+          child: _buildImageContent(hasLocalFile, file),
+        );
+      },
+    );
+  }
+
+  Widget _buildImageContent(bool hasLocalFile, File? file) {
+    if (hasLocalFile) {
+      return Image.file(
+        file!,
+        fit: BoxFit.cover,
+        height: double.infinity,
+        width: double.infinity,
+        errorBuilder: (_, __, ___) => _buildFallback(),
+      );
+    }
+
+    if (photoUrl != null && photoUrl!.isNotEmpty) {
+      return Image.network(
+        photoUrl!,
+        fit: BoxFit.cover,
+        height: double.infinity,
+        width: double.infinity,
+        errorBuilder: (_, __, ___) => _buildFallback(),
+      );
+    }
+
+    return _buildFallback();
+  }
+
+  Widget _buildFallback() {
+    return const Icon(
+      Icons.person_rounded,
+      color: AppColors.tealMain,
+      size: 24,
     );
   }
 }

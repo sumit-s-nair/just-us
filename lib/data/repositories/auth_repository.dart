@@ -1,12 +1,17 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/network/api_client.dart';
 import '../models/user_model.dart';
+
+const String _cachedUserKey = 'cached_user_model';
 
 class AuthRepository {
   AuthRepository({required this.apiClient});
@@ -49,7 +54,18 @@ class AuthRepository {
           refreshToken: data['refreshToken'] as String,
         );
 
-        return UserModel.fromJson(data['user'] as Map<String, dynamic>);
+        final userModel = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+        
+        // Cache user model locally for fast startup
+        const storage = FlutterSecureStorage();
+        await storage.write(key: _cachedUserKey, value: jsonEncode(userModel.toJson()));
+
+        // Also aggressively cache their profile image to disk
+        if (userModel.photoUrl != null) {
+          await _cacheProfileImage(userModel.photoUrl!);
+        }
+
+        return userModel;
       }
 
       throw Exception('Authentication failed: ${response.statusCode}');
@@ -64,16 +80,40 @@ class AuthRepository {
   Future<UserModel?> getCurrentUser() async {
     if (!await apiClient.hasTokens) return null;
 
+    UserModel? cachedUser = await getCurrentUserCachedOnly();
+
     try {
       final response = await apiClient.get('/api/users/me');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return UserModel.fromJson(data);
+        final fetchedUser = UserModel.fromJson(data);
+        
+        // Update cache with fresh data
+        const storage = FlutterSecureStorage();
+        await storage.write(key: _cachedUserKey, value: jsonEncode(fetchedUser.toJson()));
+        
+        if (fetchedUser.photoUrl != null) {
+          _cacheProfileImage(fetchedUser.photoUrl!); // Run without awaiting so it doesn't block startup
+        }
+
+        return fetchedUser;
       }
-      return null;
+      return cachedUser; // Fallback to cache if request fails but we have tokens
     } catch (_) {
-      return null;
+      return cachedUser; // Fallback to cache if network is down
     }
+  }
+
+  /// Get the user strictly from the local cache without network request.
+  Future<UserModel?> getCurrentUserCachedOnly() async {
+    try {
+      const storage = FlutterSecureStorage();
+      final cachedString = await storage.read(key: _cachedUserKey);
+      if (cachedString != null) {
+        return UserModel.fromJson(jsonDecode(cachedString) as Map<String, dynamic>);
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Sign out from both Google and the backend.
@@ -96,9 +136,17 @@ class AuthRepository {
       await _gsi.signOut();
     } catch (_) {}
 
-    // 3. Clear local tokens
+    // 3. Clear local tokens and cached user
     try {
       await apiClient.clearTokens();
+      const storage = FlutterSecureStorage();
+      await storage.delete(key: _cachedUserKey);
+      
+      // Delete cached image
+      final file = await getProfileImageFile();
+      if (file != null && await file.exists()) {
+        await file.delete();
+      }
     } catch (_) {}
   }
 
@@ -112,4 +160,28 @@ class AuthRepository {
     }
     return deviceId;
   }
+
+  /// Helper to get the absolute file reference where the profile image should live
+  Future<File?> getProfileImageFile() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      return File('${directory.path}/cached_profile_pic.jpg');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Downloads and caches the profile picture byte stream to local storage
+  Future<void> _cacheProfileImage(String url) async {
+    try {
+      final file = await getProfileImageFile();
+      if (file == null) return;
+
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        await file.writeAsBytes(response.bodyBytes);
+      }
+    } catch (_) {}
+  }
 }
+

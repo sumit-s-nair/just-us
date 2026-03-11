@@ -19,26 +19,41 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
 
-  /// Validate session with server (called in background).
-  /// On network errors, keeps current state (user stays on home).
-  /// Only logs out if server explicitly rejects the token.
+  /// Validate session with server.
+  /// First emits the cached user instantly. Then quietly updates from network.
+  /// On network errors, keeps current state.
+  /// Only fully logs out if server explicitly rejects the token.
   Future<void> checkAuth() async {
     try {
-      final user = await authRepository.getCurrentUser();
-      if (user != null) {
-        _user = user;
+      // 1. Immediately emit the localized cached user if available
+      final cachedUser = await authRepository.getCurrentUserCachedOnly();
+      if (cachedUser != null) {
+        _user = cachedUser;
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+      } else {
+        // If there's no cache, we should at least signify we are loading
+        _status = AuthStatus.loading;
+        notifyListeners();
+      }
+
+      // 2. Refresh/Verify with the backend
+      final freshUser = await authRepository.getCurrentUser();
+      
+      if (freshUser != null) {
+        _user = freshUser;
         _status = AuthStatus.authenticated;
         notifyListeners();
       }
-      // If user is null but no exception, tokens were cleared by the
-      // API client (server rejected them). Only then mark unauthenticated.
-      if (user == null && _status != AuthStatus.initial) {
+
+      // 3. If user is null but no exception, tokens were explicitly cleared by the
+      // API client (e.g. server rejected them with 401).
+      if (freshUser == null && _status != AuthStatus.initial) {
         _status = AuthStatus.unauthenticated;
         notifyListeners();
       }
     } catch (_) {
-      // Network error — silently keep current state.
-      // User can still view cached messages offline.
+      // Network error — silently keep the cached user state.
     }
   }
 

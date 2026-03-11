@@ -1,13 +1,17 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'connectivity_service.dart';
+
 /// REST API client with automatic JWT refresh and request logging.
 class ApiClient {
-  ApiClient({required this.baseUrl});
+  ApiClient({required this.baseUrl, required this.connectivityService});
 
   final String baseUrl;
+  final ConnectivityService connectivityService;
   final _storage = const FlutterSecureStorage();
   bool _isRefreshing = false;
 
@@ -71,9 +75,12 @@ class ApiClient {
         Uri.parse('$baseUrl$path'),
         headers: await _authHeaders(),
       ).timeout(_timeout);
+      
+      connectivityService.markOnline(); // Success means we're online
       _logResponse('GET', path, response.statusCode, sw.elapsedMilliseconds);
       return _handleResponse(response, path, () => get(path));
     } catch (e) {
+      _handleNetworkError(e);
       _logError('GET', path, e, sw.elapsedMilliseconds);
       rethrow;
     }
@@ -87,9 +94,11 @@ class ApiClient {
         headers: await _authHeaders(),
         body: body != null ? jsonEncode(body) : null,
       ).timeout(_timeout);
+      connectivityService.markOnline();
       _logResponse('POST', path, response.statusCode, sw.elapsedMilliseconds);
       return _handleResponse(response, path, () => post(path, body: body));
     } catch (e) {
+      _handleNetworkError(e);
       _logError('POST', path, e, sw.elapsedMilliseconds);
       rethrow;
     }
@@ -103,9 +112,11 @@ class ApiClient {
         headers: await _authHeaders(),
         body: body != null ? jsonEncode(body) : null,
       ).timeout(_timeout);
+      connectivityService.markOnline();
       _logResponse('PUT', path, response.statusCode, sw.elapsedMilliseconds);
       return _handleResponse(response, path, () => put(path, body: body));
     } catch (e) {
+      _handleNetworkError(e);
       _logError('PUT', path, e, sw.elapsedMilliseconds);
       rethrow;
     }
@@ -118,11 +129,21 @@ class ApiClient {
         Uri.parse('$baseUrl$path'),
         headers: await _authHeaders(),
       ).timeout(_timeout);
+      connectivityService.markOnline();
       _logResponse('DELETE', path, response.statusCode, sw.elapsedMilliseconds);
       return _handleResponse(response, path, () => delete(path));
     } catch (e) {
+      _handleNetworkError(e);
       _logError('DELETE', path, e, sw.elapsedMilliseconds);
       rethrow;
+    }
+  }
+
+  void _handleNetworkError(Object error) {
+    if (error is http.ClientException || error is SocketException) {
+      connectivityService.markOffline();
+    } else if (error.toString().contains('SocketException')) {
+      connectivityService.markOffline();
     }
   }
 
